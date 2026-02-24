@@ -30,6 +30,24 @@ int main() {
             }
             last_print = time_us_32();
         }
+
+        void hid_gamepad_task(void) {
+    if (tud_hid_ready()) {
+        static uint32_t last = 0;
+        if (time_us_32() - last > 3000000) {  // press A every ~3 seconds for test
+            uint8_t report[4] = {0x01, 0, 0, 0};  // Button 1 (A button) pressed
+            tud_hid_report(1, report, sizeof(report));
+            sleep_ms(80);
+            report[0] = 0x00;
+            tud_hid_report(1, report, sizeof(report));
+            last = time_us_32();
+        }
+    }
+}
+
+// In while(true) loop, after tud_task():
+tud_task();
+hid_gamepad_task();  // Add this line
     }
     return 0;
 }

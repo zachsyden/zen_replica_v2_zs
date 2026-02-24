@@ -14,7 +14,7 @@ extern "C" {
 #define CFG_TUD_CDC_TX_BUFSIZE      64
 
 // HID (gamepad) - start disabled, we'll enable in next step
-#define CFG_TUD_HID                 0
+#define CFG_TUD_HID                 1
 
 // Other required configs
 #define CFG_TUSB_MEM_SECTION
