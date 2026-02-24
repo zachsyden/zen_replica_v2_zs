@@ -1,0 +1,58 @@
+#include <stdio.h>
+#include "pico/stdlib.h"
+#include "tusb.h"
+
+#define LED_PIN 25
+
+// Simple test: press/release "A" button every 3 seconds
+void hid_gamepad_task(void)
+{
+    static uint32_t last = 0;
+
+    if (tud_mounted() && tud_hid_ready())           // correct functions (no _n)
+    {
+        if (time_us_32() - last >= 3000000)
+        {
+            uint8_t report[4] = {0x01, 0x00, 0x00, 0x00};  // A button pressed
+            tud_hid_report(1, report, sizeof(report));      // correct call
+
+            sleep_ms(80);
+
+            report[0] = 0x00;
+            tud_hid_report(1, report, sizeof(report));
+
+            last = time_us_32();
+            printf("Test A button sent\n");
+        }
+    }
+}
+
+int main(void)
+{
+    stdio_init_all();
+    tusb_init();
+
+    gpio_init(LED_PIN);
+    gpio_set_dir(LED_PIN, GPIO_OUT);
+
+    // Fast boot blink
+    for (int i = 0; i < 6; i++) {
+        gpio_put(LED_PIN, 1); sleep_ms(100);
+        gpio_put(LED_PIN, 0); sleep_ms(100);
+    }
+
+    printf("Proton RP2350 + HID Gamepad ready!\n");
+
+    while (true)
+    {
+        tud_task();
+        hid_gamepad_task();
+
+        // Slow LED blink
+        static uint32_t last_blink = 0;
+        if (time_us_32() - last_blink > 1000000) {
+            gpio_put(LED_PIN, !gpio_get(LED_PIN));
+            last_blink = time_us_32();
+        }
+    }
+}

@@ -8,26 +8,25 @@
 // Simple periodic HID test: press/release "A" button every ~3 seconds
 void hid_gamepad_task(void)
 {
-    static uint32_t last_press_time = 0;
+    static uint32_t last_press = 0;
 
-    if (tud_mounted() && tud_hid_ready())       // ← correct: no _n
+    if (tud_mounted() && tud_hid_ready())   // Correct: no _n
     {
         uint32_t now = time_us_32();
 
-        if (now - last_press_time >= 3000000)   // 3 seconds
+        if (now - last_press >= 3000000)     // 3 seconds
         {
-            uint8_t report[4] = {0x01, 0x00, 0x00, 0x00};   // Button 1 (A) pressed
+            uint8_t report[4] = {0x01, 0x00, 0x00, 0x00};  // Button 1 (A) pressed
 
-            tud_hid_report(1, report, sizeof(report));      // ← correct: no _n
+            tud_hid_report(1, report, sizeof(report));      // Correct: no _n
 
             sleep_ms(80);
 
             report[0] = 0x00;
             tud_hid_report(1, report, sizeof(report));
 
-            last_press_time = now;
-
-            printf("Sent test A press\n");
+            last_press = now;
+            printf("Test A button sent\n");
         }
     }
 }
