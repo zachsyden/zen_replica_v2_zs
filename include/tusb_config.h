@@ -12,6 +12,5 @@
 #define CFG_TUSB_MEM_SECTION
 #define CFG_TUSB_MEM_ALIGN          __attribute__ ((aligned(4)))
 
-#define CFG_TUSB_MCU                OPT_MCU_RP2350
 
 #endif
