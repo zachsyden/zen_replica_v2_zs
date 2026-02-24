@@ -10,15 +10,15 @@ void hid_gamepad_task(void)
 {
     static uint32_t last_press = 0;
 
-    if (tud_mounted() && tud_hid_ready())   // Correct: no _n
+    if (tud_mounted() && tud_hid_ready())           // Correct single-instance API
     {
         uint32_t now = time_us_32();
 
-        if (now - last_press >= 3000000)     // 3 seconds
+        if (now - last_press >= 3000000UL)
         {
-            uint8_t report[4] = {0x01, 0x00, 0x00, 0x00};  // Button 1 (A) pressed
+            uint8_t report[4] = {0x01, 0x00, 0x00, 0x00};  // A button pressed
 
-            tud_hid_report(1, report, sizeof(report));      // Correct: no _n
+            tud_hid_report(1, report, sizeof(report));      // Correct call
 
             sleep_ms(80);
 
@@ -26,6 +26,7 @@ void hid_gamepad_task(void)
             tud_hid_report(1, report, sizeof(report));
 
             last_press = now;
+
             printf("Test A button sent\n");
         }
     }
