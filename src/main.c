@@ -1,53 +1,97 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
-#include "tusb.h"           // TinyUSB header
+#include "tusb.h"               // TinyUSB main header
 
-int main() {
-    stdio_init_all();
-    tusb_init();            // Initialize TinyUSB device stack
+// Onboard LED is GPIO 25 on Proton / Pico 2
+#define LED_PIN 25
 
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+// Simple periodic HID test: press/release "A" button every ~3 seconds
+void hid_gamepad_task(void)
+{
+    static uint32_t last_press_time = 0;
 
-    printf("Proton RP2350 started - TinyUSB init done. LED on GPIO %d\n", PICO_DEFAULT_LED_PIN);
+    // Only send report when HID is ready and mounted
+    if (tud_mounted() && tud_hid_ready())
+    {
+        uint32_t now = time_us_32();
 
-    while (true) {
-        tud_task();         // MUST call this regularly for USB to work
+        if (now - last_press_time >= 3000000)   // 3 seconds
+        {
+            uint8_t report[4] = {0};
 
-        // Your blink
-        gpio_put(PICO_DEFAULT_LED_PIN, 1);
-        sleep_ms(500);
-        gpio_put(PICO_DEFAULT_LED_PIN, 0);
-        sleep_ms(500);
+            // Press button 1 (A button) - first byte, bit 0
+            report[0] = 0x01;                       // Buttons bitmap low byte
+            tud_hid_report(1, report, sizeof(report)); // Report ID 1
 
-        // Optional: print connection status every few seconds
-        static uint32_t last_print = 0;
-        if (time_us_32() - last_print > 5000000) {  // every 5s
-            if (tud_mounted()) {
-                printf("USB mounted! Host sees us.\n");
-            } else {
-                printf("Waiting for USB host...\n");
-            }
-            last_print = time_us_32();
-        }
+            sleep_ms(80);                           // Hold ~80 ms (tune for green window later)
 
-        void hid_gamepad_task(void) {
-    if (tud_hid_ready()) {
-        static uint32_t last = 0;
-        if (time_us_32() - last > 3000000) {  // press A every ~3 seconds for test
-            uint8_t report[4] = {0x01, 0, 0, 0};  // Button 1 (A button) pressed
-            tud_hid_report(1, report, sizeof(report));
-            sleep_ms(80);
+            // Release
             report[0] = 0x00;
             tud_hid_report(1, report, sizeof(report));
-            last = time_us_32();
+
+            last_press_time = now;
+            printf("Sent gamepad A press (test)\n");
         }
     }
 }
 
-// In while(true) loop, after tud_task():
-tud_task();
-hid_gamepad_task();  // Add this line
+int main(void)
+{
+    stdio_init_all();               // Serial over USB (CDC)
+    tusb_init();                    // Initialize TinyUSB stack
+
+    // Initialize LED
+    gpio_init(LED_PIN);
+    gpio_set_dir(LED_PIN, GPIO_OUT);
+
+    // Initial fast blink to confirm boot
+    for (int i = 0; i < 6; i++)
+    {
+        gpio_put(LED_PIN, 1);
+        sleep_ms(100);
+        gpio_put(LED_PIN, 0);
+        sleep_ms(100);
     }
+
+    printf("Proton RP2350 started - TinyUSB init OK\n");
+    printf("Waiting for USB host connection...\n");
+
+    uint32_t last_status_print = 0;
+    uint32_t last_blink = 0;
+
+    while (true)
+    {
+        tud_task();                 // Must call frequently for USB to work
+
+        // Slow blink while waiting / running
+        if (time_us_32() - last_blink > 1000000)   // 1 second toggle
+        {
+            gpio_put(LED_PIN, !gpio_get(LED_PIN));
+            last_blink = time_us_32();
+        }
+
+        // Print USB status every 5 seconds (visible when debugger connected)
+        if (time_us_32() - last_status_print > 5000000)
+        {
+            if (tud_mounted())
+            {
+                printf("USB mounted by host! HID gamepad active.\n");
+                // Fast blink when connected
+                for (int i = 0; i < 3; i++)
+                {
+                    gpio_put(LED_PIN, 1); sleep_ms(150);
+                    gpio_put(LED_PIN, 0); sleep_ms(150);
+                }
+            }
+            else
+            {
+                printf("Waiting for USB host...\n");
+            }
+            last_status_print = time_us_32();
+        }
+
+        hid_gamepad_task();         // Send periodic A button press for testing
+    }
+
     return 0;
 }
