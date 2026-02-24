@@ -10,27 +10,24 @@ void hid_gamepad_task(void)
 {
     static uint32_t last_press_time = 0;
 
-    // Only send report when HID is ready and mounted
-    if (tud_mounted() && tud_hid_ready())
+    if (tud_mounted() && tud_hid_ready())       // ← correct: no _n
     {
         uint32_t now = time_us_32();
 
         if (now - last_press_time >= 3000000)   // 3 seconds
         {
-            uint8_t report[4] = {0};
+            uint8_t report[4] = {0x01, 0x00, 0x00, 0x00};   // Button 1 (A) pressed
 
-            // Press button 1 (A button) - first byte, bit 0
-            report[0] = 0x01;                       // Buttons bitmap low byte
-            tud_hid_report(1, report, sizeof(report)); // Report ID 1
+            tud_hid_report(1, report, sizeof(report));      // ← correct: no _n
 
-            sleep_ms(80);                           // Hold ~80 ms (tune for green window later)
+            sleep_ms(80);
 
-            // Release
             report[0] = 0x00;
             tud_hid_report(1, report, sizeof(report));
 
             last_press_time = now;
-            printf("Sent gamepad A press (test)\n");
+
+            printf("Sent test A press\n");
         }
     }
 }
@@ -62,7 +59,7 @@ int main(void)
     while (true)
     {
         tud_task();                 // Must call frequently for USB to work
-
+        hid_gamepad_task();         // Send periodic A button press for testing
         // Slow blink while waiting / running
         if (time_us_32() - last_blink > 1000000)   // 1 second toggle
         {
@@ -90,7 +87,7 @@ int main(void)
             last_status_print = time_us_32();
         }
 
-        hid_gamepad_task();         // Send periodic A button press for testing
+        
     }
 
     return 0;
